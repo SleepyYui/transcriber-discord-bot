@@ -62,109 +62,113 @@ function censorBannedWords(text: string) {
 }
 
 bot.on("interactionCreate", async (interaction: any) => {
-  console.log("Interaction received!");
-  //console.log(interaction.data);
-  const message = interaction.data.resolved.messages.get(interaction.data.target_id);
-  //console.log(message);
-  // check if interaction has any files
-  if (message.attachments.length > 0) {
-    console.log("Interaction has files!");
-    await interaction.acknowledge();
-    // check if any of the files is an audio file
-    const audioFiles = message.attachments.filter((attachment: any) => {
-      //console.log(attachment);
-      return attachment.content_type.startsWith("audio");
-    });
-    if (audioFiles.length > 0) {
-      console.log("Interaction has audio files!");
-      for (const audioFile of audioFiles) {
-        console.log("Processing audio file...");
-        //console.log(audioFile);
-        // get read stream from audioFile
-        getAudioStream(audioFile.url)
-          .then((stream: any) => {
-            //console.log(stream);
-            // send readStream to OpenAI
-            console.log("Sending audio to OpenAI...");
-            openai.audio.transcriptions.create({
-              file: stream,
-              model: "whisper-1",
-            })
-              .then((transcription: any) => {
-                console.log(transcription);
-                // send transcription to channel
-                let transcriptionText = transcription.text;
-                // censor banned words
-                transcriptionText = censorBannedWords(transcriptionText);
-                // check if transcription is longer than 4096 characters
-                if (transcriptionText.length > 4096) {
-                  // add transcription to hastebin
-                  axios.post("https://hastebin.com/documents", transcriptionText).then(
-                    (response: any) => {
-                      // truncate transcription
-                      transcriptionText = transcriptionText.substring(0, 4096);
-                      // send transcription to channel
+  try {
+    console.log("Interaction received!");
+    //console.log(interaction.data);
+    const message = interaction.data?.resolved?.messages?.get(interaction.data.target_id);
+    //console.log(message);
+    // check if interaction has any files
+    if (message.attachments.length > 0) {
+      console.log("Interaction has files!");
+      await interaction.acknowledge();
+      // check if any of the files is an audio file
+      const audioFiles = message.attachments.filter((attachment: any) => {
+        //console.log(attachment);
+        return attachment.content_type.startsWith("audio");
+      });
+      if (audioFiles.length > 0) {
+        console.log("Interaction has audio files!");
+        for (const audioFile of audioFiles) {
+          console.log("Processing audio file...");
+          //console.log(audioFile);
+          // get read stream from audioFile
+          getAudioStream(audioFile.url)
+            .then((stream: any) => {
+              //console.log(stream);
+              // send readStream to OpenAI
+              console.log("Sending audio to OpenAI...");
+              openai.audio.transcriptions.create({
+                file: stream,
+                model: "whisper-1",
+              })
+                .then((transcription: any) => {
+                  console.log(transcription);
+                  // send transcription to channel
+                  let transcriptionText = transcription.text;
+                  // censor banned words
+                  transcriptionText = censorBannedWords(transcriptionText);
+                  // check if transcription is longer than 4096 characters
+                  if (transcriptionText.length > 4096) {
+                    // add transcription to hastebin
+                    axios.post("https://hastebin.com/documents", transcriptionText).then(
+                      (response: any) => {
+                        // truncate transcription
+                        transcriptionText = transcriptionText.substring(0, 4096);
+                        // send transcription to channel
+                        interaction.createFollowup({
+                          content: "",
+                          embeds: [
+                            {
+                              title: "Transcription",
+                              description: transcriptionText,
+                              color: 0x4a8aff,
+                            },
+                            {
+                              title: "Full Transcription",
+                              description: `https://hastebin.com/share/${response.data.key}`,
+                              color: 0x0000ff,
+                            },
+                          ],
+                        })
+                      }
+                    ).catch((err: any) => {
+                      console.error(err);
                       interaction.createFollowup({
                         content: "",
                         embeds: [
                           {
                             title: "Transcription",
-                            description: transcriptionText,
-                            color: 0x4a8aff,
-                          },
-                          {
-                            title: "Full Transcription",
-                            description: `https://hastebin.com/share/${response.data.key}`,
-                            color: 0x0000ff,
+                            description: transcriptionText.substring(0, 4096),
                           },
                         ],
-                      })
-                    }
-                  ).catch((err: any) => {
-                    console.error(err);
+                        color: 0x4a8aff,
+                      });
+                    });
+                  } else {
                     interaction.createFollowup({
                       content: "",
                       embeds: [
                         {
                           title: "Transcription",
-                          description: transcriptionText.substring(0, 4096),
+                          description: transcription.text,
                         },
                       ],
                       color: 0x4a8aff,
                     });
-                  });
-                } else {
-                  interaction.createFollowup({
-                    content: "",
-                    embeds: [
-                      {
-                        title: "Transcription",
-                        description: transcription.text,
-                      },
-                    ],
-                    color: 0x4a8aff,
-                  });
-                }
-              }).catch((err: any) => {
-              console.error(err);
-            });
-          }).catch((err: any) => {
-          console.error(err);
-        });
+                  }
+                }).catch((err: any) => {
+                console.error(err);
+              });
+            }).catch((err: any) => {
+            console.error(err);
+          });
+        }
+      } else {
+        console.log("Interaction has no audio files!");
+        return interaction.createMessage({
+          content: "This message has no audio files!",
+          flags: 1 << 6,
+        })
       }
     } else {
-      console.log("Interaction has no audio files!");
+      console.log("Interaction has no files!");
       return interaction.createMessage({
-        content: "This message has no audio files!",
+        content: "This message has no files!",
         flags: 1 << 6,
       })
     }
-  } else {
-    console.log("Interaction has no files!");
-    return interaction.createMessage({
-      content: "This message has no files!",
-      flags: 1 << 6,
-    })
+  } catch (err: any) {
+    console.error(err);
   }
 });
 
