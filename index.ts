@@ -7,6 +7,8 @@ const axios = require("axios").default;
 const path = require('path');
 const fs = require('fs');
 
+const bannedWords = require("./bannedWords").bannedwords;
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -27,58 +29,61 @@ bot.on("ready", () => {
 
 async function getAudioStream(url: string) {
   try {
-    // Make an HTTP GET request to the URL to download the file
-    const response = await axios.get(url, { responseType: 'stream' });
+    const response = await axios.get(url, {responseType: 'stream'});
 
-    // Check if the response status code is OK (200)
     if (response.status !== 200) {
       throw new Error(`Failed to fetch audio, status code: ${response.status}`);
     }
 
-    // Define the path where you want to save the downloaded file
-    const filePath = path.join(__dirname, 'audio', 'file.mp3'); // Adjust the file path as needed
-
-    // Create a writable stream to save the file
+    const filePath = path.join(__dirname, 'audio', 'file.mp3');
     const fileStream = fs.createWriteStream(filePath);
 
-    // Pipe the response data (stream) to the file stream
     response.data.pipe(fileStream);
 
-    // Wait for the file to finish downloading
     await new Promise((resolve, reject) => {
       fileStream.on('finish', resolve);
       fileStream.on('error', reject);
     });
 
-    // Create a Readable stream from the downloaded file
     const audioReadStream = fs.createReadStream(filePath);
 
     return audioReadStream;
   } catch (error: any) {
     console.error(`Error fetching audio: ${error.message}`);
-    throw error; // Re-throw the error to handle it where the function is called
+    throw error;
   }
 }
 
+function censorBannedWords(text: string) {
+  for (const word of bannedWords) {
+    text = text.replace(word, word.length > 1 ? "*".repeat(word.length) : "*");
+  }
+  return text;
+}
+
 bot.on("interactionCreate", async (interaction: any) => {
-  await interaction.acknowledge();
-  console.log(interaction.data);
+  console.log("Interaction received!");
+  //console.log(interaction.data);
   const message = interaction.data.resolved.messages.get(interaction.data.target_id);
-  console.log(message);
+  //console.log(message);
   // check if interaction has any files
   if (message.attachments.length > 0) {
+    console.log("Interaction has files!");
+    await interaction.acknowledge();
     // check if any of the files is an audio file
     const audioFiles = message.attachments.filter((attachment: any) => {
-      console.log(attachment);
+      //console.log(attachment);
       return attachment.content_type.startsWith("audio");
     });
     if (audioFiles.length > 0) {
+      console.log("Interaction has audio files!");
       for (const audioFile of audioFiles) {
-        console.log(audioFile);
+        console.log("Processing audio file...");
+        //console.log(audioFile);
         // get read stream from audioFile
         getAudioStream(audioFile.url)
           .then((stream: any) => {
-            console.log(stream);
+            //console.log(stream);
             // send readStream to OpenAI
             console.log("Sending audio to OpenAI...");
             openai.audio.transcriptions.create({
@@ -88,19 +93,78 @@ bot.on("interactionCreate", async (interaction: any) => {
               .then((transcription: any) => {
                 console.log(transcription);
                 // send transcription to channel
-                interaction.createFollowup({
-                  content: transcription.text,
-                })
-              })
-              .catch((err: any) => {
-                console.error(err);
-              });
-          })
-          .catch((err: any) => {
-            console.error(err);
-          });
+                let transcriptionText = transcription.text;
+                // censor banned words
+                transcriptionText = censorBannedWords(transcriptionText);
+                // check if transcription is longer than 4096 characters
+                if (transcriptionText.length > 4096) {
+                  // add transcription to hastebin
+                  axios.post("https://hastebin.com/documents", transcriptionText).then(
+                    (response: any) => {
+                      // truncate transcription
+                      transcriptionText = transcriptionText.substring(0, 4096);
+                      // send transcription to channel
+                      interaction.createFollowup({
+                        content: "",
+                        embeds: [
+                          {
+                            title: "Transcription",
+                            description: transcriptionText,
+                            color: 0x6f00ff,
+                          },
+                          {
+                            title: "Full Transcription",
+                            description: `https://hastebin.com/share/${response.data.key}`,
+                            color: 0x0000ff,
+                          },
+                        ],
+                      })
+                    }
+                  ).catch((err: any) => {
+                    console.error(err);
+                    interaction.createFollowup({
+                      content: "",
+                      embeds: [
+                        {
+                          title: "Transcription",
+                          description: transcriptionText.substring(0, 4096),
+                        },
+                      ],
+                      color: 0x6f00ff,
+                    });
+                  });
+                } else {
+                  interaction.createFollowup({
+                    content: "",
+                    embeds: [
+                      {
+                        title: "Transcription",
+                        description: transcription.text,
+                      },
+                    ],
+                    color: 0x6f00ff,
+                  });
+                }
+              }).catch((err: any) => {
+              console.error(err);
+            });
+          }).catch((err: any) => {
+          console.error(err);
+        });
       }
+    } else {
+      console.log("Interaction has no audio files!");
+      return interaction.createMessage({
+        content: "This message has no audio files!",
+        flags: 1 << 6,
+      })
     }
+  } else {
+    console.log("Interaction has no files!");
+    return interaction.createMessage({
+      content: "This message has no files!",
+      flags: 1 << 6,
+    })
   }
 });
 
