@@ -156,15 +156,29 @@ bot.on("interactionCreate", async (interaction: any) => {
       } else {
         console.log("Interaction has no audio files!");
         return interaction.createMessage({
-          content: "This message has no audio files!",
+          content: "",
+          embeds: [
+            {
+              title: "No Audio Files",
+              description: "This message has no audio files!",
+            },
+          ],
           flags: 1 << 6,
+          color: 0xff0000,
         })
       }
     } else {
       console.log("Interaction has no files!");
       return interaction.createMessage({
-        content: "This message has no files!",
+        content: "",
+        embeds: [
+          {
+            title: "No Files",
+            description: "This message has no files!",
+          },
+        ],
         flags: 1 << 6,
+        color: 0xff0000,
       })
     }
   } catch (err: any) {
