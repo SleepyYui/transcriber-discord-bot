@@ -110,7 +110,7 @@ bot.on("interactionCreate", async (interaction: any) => {
                           {
                             title: "Transcription",
                             description: transcriptionText,
-                            color: 0x6f00ff,
+                            color: 0x4a8aff,
                           },
                           {
                             title: "Full Transcription",
@@ -130,7 +130,7 @@ bot.on("interactionCreate", async (interaction: any) => {
                           description: transcriptionText.substring(0, 4096),
                         },
                       ],
-                      color: 0x6f00ff,
+                      color: 0x4a8aff,
                     });
                   });
                 } else {
@@ -142,7 +142,7 @@ bot.on("interactionCreate", async (interaction: any) => {
                         description: transcription.text,
                       },
                     ],
-                    color: 0x6f00ff,
+                    color: 0x4a8aff,
                   });
                 }
               }).catch((err: any) => {
