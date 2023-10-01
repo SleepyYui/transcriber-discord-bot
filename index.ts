@@ -15,11 +15,12 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-
 const bot = new Eris(`Bot ${process.env.TOKEN}`, {
   intents: [],
   restMode: true,
 });
+
+const allowMultipleTranscriptions = false;
 
 
 console.info(`Starting up...`);
@@ -78,7 +79,23 @@ bot.on("interactionCreate", async (interaction: any) => {
       });
       if (audioFiles.length > 0) {
         console.log("Interaction has audio files!");
+        let audioIndex = 0;
         for (const audioFile of audioFiles) {
+          if (audioIndex > 0 && !allowMultipleTranscriptions) {
+            interaction.createFollowup({
+              content: "",
+              embeds: [
+                {
+                  title: "Error",
+                  description: "This message has multiple audio files, only the first one will be transcribed!",
+                },
+              ],
+              flags: 1 << 6,
+              color: 0xff0000,
+            });
+            break;
+          }
+          audioIndex++;
           console.log("Processing audio file...");
           //console.log(audioFile);
           // get read stream from audioFile
@@ -109,7 +126,7 @@ bot.on("interactionCreate", async (interaction: any) => {
                           content: "",
                           embeds: [
                             {
-                              title: "Transcription",
+                              title: "Transcription (truncated)",
                               description: transcriptionText,
                               color: 0x4a8aff,
                             },
@@ -127,7 +144,7 @@ bot.on("interactionCreate", async (interaction: any) => {
                         content: "",
                         embeds: [
                           {
-                            title: "Transcription",
+                            title: "Transcription (truncated)",
                             description: transcriptionText.substring(0, 4096),
                           },
                         ],
@@ -148,9 +165,31 @@ bot.on("interactionCreate", async (interaction: any) => {
                   }
                 }).catch((err: any) => {
                 console.error(err);
+                interaction.createFollowup({
+                  content: "",
+                  embeds: [
+                    {
+                      title: "Error",
+                      description: "An error occurred while transcribing the audio file!",
+                    },
+                  ],
+                  flags: 1 << 6,
+                  color: 0xff0000,
+                });
               });
             }).catch((err: any) => {
             console.error(err);
+            interaction.createFollowup({
+              content: "",
+              embeds: [
+                {
+                  title: "Error",
+                  description: "An error occurred while transcribing the audio file!",
+                },
+              ],
+              flags: 1 << 6,
+              color: 0xff0000,
+            });
           });
         }
       } else {
