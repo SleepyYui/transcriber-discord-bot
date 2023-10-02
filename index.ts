@@ -88,10 +88,10 @@ bot.on("interactionCreate", async (interaction: any) => {
                 {
                   title: "Error",
                   description: "This message has multiple audio files, only the first one will be transcribed!",
+                  color: 0xff0000,
                 },
               ],
               flags: 1 << 6,
-              color: 0xff0000,
             });
             break;
           }
@@ -146,9 +146,9 @@ bot.on("interactionCreate", async (interaction: any) => {
                           {
                             title: "Transcription (truncated)",
                             description: transcriptionText.substring(0, 4096),
+                            color: 0x4a8aff,
                           },
                         ],
-                        color: 0x4a8aff,
                       });
                     });
                   } else {
@@ -158,9 +158,9 @@ bot.on("interactionCreate", async (interaction: any) => {
                         {
                           title: "Transcription",
                           description: transcription.text,
+                          color: 0x4a8aff,
                         },
                       ],
-                      color: 0x4a8aff,
                     });
                   }
                 }).catch((err: any) => {
@@ -171,10 +171,10 @@ bot.on("interactionCreate", async (interaction: any) => {
                     {
                       title: "Error",
                       description: "An error occurred while transcribing the audio file!",
+                      color: 0xff0000,
                     },
                   ],
                   flags: 1 << 6,
-                  color: 0xff0000,
                 });
               });
             }).catch((err: any) => {
@@ -185,10 +185,10 @@ bot.on("interactionCreate", async (interaction: any) => {
                 {
                   title: "Error",
                   description: "An error occurred while transcribing the audio file!",
+                  color: 0xff0000,
                 },
               ],
               flags: 1 << 6,
-              color: 0xff0000,
             });
           });
         }
@@ -200,10 +200,10 @@ bot.on("interactionCreate", async (interaction: any) => {
             {
               title: "No Audio Files",
               description: "This message has no audio files!",
+              color: 0xff0000,
             },
           ],
           flags: 1 << 6,
-          color: 0xff0000,
         })
       }
     } else {
@@ -214,10 +214,10 @@ bot.on("interactionCreate", async (interaction: any) => {
           {
             title: "No Files",
             description: "This message has no files!",
+            color: 0xff0000,
           },
         ],
         flags: 1 << 6,
-        color: 0xff0000,
       })
     }
   } catch (err: any) {
